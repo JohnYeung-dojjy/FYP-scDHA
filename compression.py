@@ -49,7 +49,7 @@ def normalization(data):
 
 
 def pipeline(path_name, denoise_batch_size, denoise_epochs, denoise_plot, encode_batch_size, encode_epochs, vae_choice, retrain=False):
-    K = 3
+
     if os.path.isfile(f'latent/{path_name}.npy') and not retrain:
         return np.load(f'latent/{path_name}.npy')
     else:
@@ -84,30 +84,30 @@ def pipeline(path_name, denoise_batch_size, denoise_epochs, denoise_plot, encode
         # denoised_data = normalization(denoised_data)
         
         latent = []
-        for _ in range(K): # repeat train for 3 times, used for voting
-            if vae_choice == 'mine':
-                # define the stacked_bayesian_autoencoder object
-                VAE = stacked_bayesian_autoencoder(original_dim=denoised_data.size()[1], im_dim=64, lat_dim=15)
-                print(VAE)
-                # Train the model
-                encode.train_model(VAE, denoised_data, beta = 50, EPOCHS_0=encode_epochs[0], EPOCHS_1=encode_epochs[1], BATCH_SIZE=encode_batch_size)
-            elif vae_choice == "paper":
-                # define the stacked_bayesian_autoencoder object
-                VAE = paper_encoder(original_dim=denoised_data.size()[1], im_dim=64, lat_dim=15)
-                print(VAE)
-                # Train the model
-                paper_encode.train_model(VAE, denoised_data, beta = 50, EPOCHS_0=encode_epochs[0], EPOCHS_1=encode_epochs[1], BATCH_SIZE=encode_batch_size)
-            
-            # stop updating the model's parameters
-            VAE.eval()
-            
-            # return the latent variable
-            with torch.no_grad():
-                latent.append(VAE.encode_mu(denoised_data).cpu().numpy())
-                # print(latent.requires_grad)
-                # torch.save(latent, f'latent/{path_name}.pt')
-                # print(latent.cpu().numpy())
-                # np.save(f'latent/{path_name}.npy', latent.cpu().numpy())
+        
+        if vae_choice == 'mine':
+            # define the stacked_bayesian_autoencoder object
+            VAE = stacked_bayesian_autoencoder(original_dim=denoised_data.size()[1], im_dim=64, lat_dim=15)
+            print(VAE)
+            # Train the model
+            encode.train_model(VAE, denoised_data, beta = 50, EPOCHS_0=encode_epochs[0], EPOCHS_1=encode_epochs[1], BATCH_SIZE=encode_batch_size)
+        elif vae_choice == "paper":
+            # define the stacked_bayesian_autoencoder object
+            VAE = paper_encoder(original_dim=denoised_data.size()[1], im_dim=64, lat_dim=15)
+            print(VAE)
+            # Train the model
+            paper_encode.train_model(VAE, denoised_data, beta = 50, EPOCHS_0=encode_epochs[0], EPOCHS_1=encode_epochs[1], BATCH_SIZE=encode_batch_size)
+        
+        # stop updating the model's parameters
+        VAE.eval()
+        
+        # return the latent variable
+        with torch.no_grad():
+            latent.append(VAE.encode_mu(denoised_data).cpu().numpy())
+            # print(latent.requires_grad)
+            # torch.save(latent, f'latent/{path_name}.pt')
+            # print(latent.cpu().numpy())
+            # np.save(f'latent/{path_name}.npy', latent.cpu().numpy())
         return latent
 
 if __name__ == '__main__':
