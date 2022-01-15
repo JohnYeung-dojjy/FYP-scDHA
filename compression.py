@@ -15,7 +15,7 @@ import torch.optim as optim                          # optimization
 import os
 from tqdm import tqdm                                # for progress bar
 from sklearn.model_selection import train_test_split
-
+from sklearn import preprocessing
 
 from numba import njit
 
@@ -65,7 +65,9 @@ def pipeline(path_name, denoise_batch_size, denoise_epochs, denoise_plot, encode
             np.save(f'npy_data/{path_name}.npy', data)
         
         # normalize the data
-        normalized_data = normalization(data)
+        # normalized_data = normalization(data)
+        normalizer = preprocessing.MinMaxScaler()
+        normalized_data = normalizer.fit_transform(data)
         
 
         # define the non_negative_kerel_autoencoder object

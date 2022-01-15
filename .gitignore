@@ -9,3 +9,12 @@ npy_data
 Reference
 scDHA
 *.pt
+rds_data
+rds_csv_data
+.RData
+.Rhistory
+rds_to_csv.R
+
+scanpy.ipynb
+test_plot.ipynb
+

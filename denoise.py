@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from torch.nn.parameter import Parameter
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn import preprocessing
 
 import torch.optim as optim                          # optimization
 from tqdm import tqdm                                # for progress bar
