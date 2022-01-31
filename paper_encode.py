@@ -7,6 +7,7 @@ import encode
 
 import torch.optim as optim                          # optimization
 from tqdm import tqdm                                # for progress bar
+from torch.utils.data import DataLoader
 
 if torch.cuda.is_available():
     device = torch.device("cuda:0")
@@ -116,13 +117,15 @@ def train_model(model, data, EPOCHS_0 = 10, EPOCHS_1 = 20, BATCH_SIZE = 100, bet
             loss = F.l1_loss(output[2], data[i:i+BATCH_SIZE]) + F.l1_loss(output[3], data[i:i+BATCH_SIZE])
             
             # print(f'loss1: {F.l1_loss(output[2], data[i:i+BATCH_SIZE])}, loss2: {F.l1_loss(output[3], data[i:i+BATCH_SIZE])}')
+            torch.clamp(loss, max=0.5)
             # backward
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
             
         # Show progress
-        print(f"Loss: {loss.item()}")
+        if epoch%10 == 9:
+            print(f"epoch {epoch} Loss: {loss.item()}")
         #print(f'Loss: {loss.item()}, isnan: {torch.isnan(model.parameters()).any()}')
     
     optimizer = torch.optim.AdamW(model.parameters(), lr=5e-4, eps=1e-7, weight_decay=1e-3)
@@ -136,14 +139,17 @@ def train_model(model, data, EPOCHS_0 = 10, EPOCHS_1 = 20, BATCH_SIZE = 100, bet
             loss = encode.loss_function(output[2], data[i:i+BATCH_SIZE], mu=output[0], var=output[1], beta=beta)\
                    + encode.loss_function(output[3], data[i:i+BATCH_SIZE], mu=output[0], var=output[1], beta=beta)
             
+            # print(loss, loss.shape)
             
+                
             # backward
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
             
         # Show progress
-        print(f"Loss: {loss.item()}")
+        if epoch%10 == 9:
+            print(f"epoch {epoch} Loss: {loss.item()}")
         # print(f'Loss: {loss.item()}, isnan: {torch.isnan(model.parameters()).any()}')
                 
                 

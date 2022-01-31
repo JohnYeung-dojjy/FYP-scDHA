@@ -14,7 +14,7 @@ else:
     device = torch.device("cpu")
 
 def sampling(mu:torch.Tensor, var:torch.Tensor, epsilon_std:torch.Tensor, lat_dim):
-    return mu + torch.sqrt(var)*epsilon_std*torch.randn((1, lat_dim), device=device)
+    return mu + torch.sqrt(var)*epsilon_std*torch.randn_like(var, device=device)
 
 class stacked_bayesian_autoencoder(nn.Module):
     # im = intermediate
@@ -105,11 +105,12 @@ def kl_div_loss(mu, var):
 
     #@torch.jit.script
 def loss_function(input, target, mu, var, beta = 100):
-    mse_loss = F.mse_loss(input, target)
+    # mse_loss = F.mse_loss(input, target)
+    mse_loss = torch.mean(torch.square(target - input), dim=1)
     # kl_div = F.kl_div(input, target, reduction='batchmean')
     kl_div = kl_div_loss(mu, var)
     # print("mse_loss: ", mse_loss.item(), '\n', "kl_div: ", kl_div.item())
-    return beta * mse_loss + kl_div
+    return (beta * mse_loss + kl_div).mean()
 
 def train_model(model, data, EPOCHS_0 = 10, EPOCHS_1 = 20, BATCH_SIZE = 100, beta = 50):
     
@@ -143,7 +144,8 @@ def train_model(model, data, EPOCHS_0 = 10, EPOCHS_1 = 20, BATCH_SIZE = 100, bet
             # optimizer_0.zero_grad()
             
         # Show progress
-        print("Loss: ", loss.item())
+        if epoch%10 == 0:
+            print("Loss: ", loss.item())
         # print(f'Loss: {loss.item()}, isnan: {torch.isnan(model.parameters()).any()}')
 
     # the VAE stage training
@@ -167,7 +169,8 @@ def train_model(model, data, EPOCHS_0 = 10, EPOCHS_1 = 20, BATCH_SIZE = 100, bet
             # optimizer_1.zero_grad()
             
         # Show progress
-        print("Loss: ", loss.item())
+        if epoch%10 == 0:
+            print("Loss: ", loss.item())
         # print(f'Loss: {loss.item()}, isnan: {torch.isnan(model.parameters()).any()}')
 
                 
