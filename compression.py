@@ -5,6 +5,7 @@ import numpy as np
 import torch
 from torchvision import transforms
 import matplotlib.pyplot as plt
+import random
 
 import torch.nn as nn
 import torch.nn.functional as F
@@ -48,7 +49,7 @@ def normalization(data):
     return normalized_data.T
 
 
-def pipeline(path_name, is_plot_denoise, vae_choice, retrain=False):
+def pipeline(path_name, is_plot_denoise, vae_choice, retrain=False, seed=None):
     """
     load the data and compress it using the scDHA pipeline
     return the compressed latent data
@@ -73,12 +74,18 @@ def pipeline(path_name, is_plot_denoise, vae_choice, retrain=False):
             np.save(f'npy_data/{path_name}.npy', data)
         # print(data, data.max(), data.min())
         
+        random.seed(seed)
         ######### training variables ###########
         wdecay = [1e-6, 1e-3]
         batch_size = max(round(len(data)/50), 2)
         denoise_epochs = 10
         encode_epochs = [10, 20]
         orginal_dim = data.shape[1]
+        
+        lr = 5e-4
+        epsilon_std = 0.25
+        beta = 100
+        ens = 3
         ########################################
         
         # different cell have different number of samples
@@ -91,7 +98,7 @@ def pipeline(path_name, is_plot_denoise, vae_choice, retrain=False):
             
         # normalize the data
         normalized_data = normalization(data)
-        print(f"first column of normalized_data\n{normalized_data[:,0]}")
+        # print(f"first column of normalized_data\n{normalized_data[:,0]}")
         
         device_data = torch.tensor(normalized_data, dtype=torch.float).to(device)
 
@@ -100,8 +107,13 @@ def pipeline(path_name, is_plot_denoise, vae_choice, retrain=False):
         
         print("training non-negative kernel autoencoder")
         # gene filtering
+        if seed is not None:
+            random.seed(seed)
         Wsds = [] # standard deviations of Weights
-        for _ in range(3): # repeat for 3 times and take the average variance of weights
+        for i in range(3): # repeat for 3 times and take the average variance of weights
+            if seed is not None:
+                random.seed(seed + i)
+                torch.manual_seed(seed + i)
             dataloader = DataLoader(device_data, batch_size=batch_size, shuffle=True, drop_last=True)
         
             # define the non_negative_kerel_autoencoder object
@@ -137,16 +149,17 @@ def pipeline(path_name, is_plot_denoise, vae_choice, retrain=False):
             # https://pytorch.org/docs/stable/generated/torch.var.html
             # https://pytorch.org/docs/stable/generated/torch.transpose.html
             # weight_var = torch.std(torch.transpose(self.encoder.weight, 0, 1), dim=1)
-            Wsd = torch.std(XNeg_kernel_autoencoder.encoder.weight, 0, 1, dim=0)
-            # print(weight_var.data)
+            Wsd = torch.std(XNeg_kernel_autoencoder.encoder.weight.data, dim=0)
+            # print(XNeg_kernel_autoencoder.encoder.weight.data.shape)
+            # print(Wsd)
             # rescale weight_var to [0, 1] for ploting use
             Wsd[torch.isnan(Wsd)] = 0 # I don't know why this is here
             Wsd = (Wsd - Wsd.min()) / (Wsd.max() - Wsd.min())
             Wsd[torch.isnan(Wsd)] = 0 # in case of 0 division
             
             Wsds.append(Wsd.cpu().detach()) # add to Wsds
-        
-        Wsds = torch.cat((Wsds[0], Wsds[1], Wsds[2]), 0).mean(dim=0) # mean of each row
+        # print(torch.stack((Wsds[0], Wsds[1], Wsds[2]), 0).shape)
+        Wsds = torch.stack((Wsds[0], Wsds[1], Wsds[2]), 0).mean(dim=0) # mean of each row
         
         # stop updating the model's parameters
         XNeg_kernel_autoencoder.eval()
@@ -157,31 +170,95 @@ def pipeline(path_name, is_plot_denoise, vae_choice, retrain=False):
         # denoised_data = normalization(denoised_data)
         
         # latent generating
-        latent = []
-        dataloader = DataLoader(device_data, batch_size=batch_size, shuffle=True, drop_last=True)
-        if vae_choice == 'mine':
+        latent_tmp = []
+        for i in range(3):
+            if seed is not None:
+                random.seed(seed + i)
+                torch.manual_seed(seed + i)
+                
+            dataloader = DataLoader(denoised_data, batch_size=batch_size, shuffle=True, drop_last=True)
             # define the stacked_bayesian_autoencoder object
-            VAE = stacked_bayesian_autoencoder(original_dim=denoised_data.size()[1], im_dim=64, lat_dim=15)
+            VAE = paper_encoder(original_dim=denoised_data.size()[1], im_dim=64, lat_dim=15).to(device)
             print(VAE)
             # Train the model
-            encode.train_model(VAE, denoised_data, beta = 50, EPOCHS_0=encode_epochs[0], EPOCHS_1=encode_epochs[1], BATCH_SIZE=batch_size)
-        elif vae_choice == "paper":
-            # define the stacked_bayesian_autoencoder object
-            VAE = paper_encoder(original_dim=denoised_data.size()[1], im_dim=64, lat_dim=15)
-            print(VAE)
-            # Train the model
-            paper_encode.train_model(VAE, denoised_data, beta = 50, EPOCHS_0=encode_epochs[0], EPOCHS_1=encode_epochs[1], BATCH_SIZE=batch_size)
-        
-        # stop updating the model's parameters
-        VAE.eval()
-        
-        # return the latent variable
-        with torch.no_grad():
-            latent = VAE.encode_mu(denoised_data).cpu().numpy()
-            # print(latent.requires_grad)
-            # torch.save(latent, f'latent/{path_name}.pt')
-            # print(latent.cpu().numpy())
-            # np.save(f'latent/{path_name}.npy', latent.cpu().numpy())
-        print(latent, latent.max(), latent.min())
-        return latent
-
+            print("training stacked bayesian autoencoder")
+            VAE.train()
+            
+            optimizer = torch.optim.AdamW(VAE.parameters(), lr=5e-4, eps=1e-7, weight_decay=wdecay[0])
+            
+            # the paper does the training data by data, but I choose to train in batches
+            
+            # the warm-up process, which uses only reconstruction loss
+            print("\n###############################\n#phase 1: the warm-up process#\n######################################")
+            for epoch in range(encode_epochs[0]):
+                optimizer.zero_grad()
+                for data in dataloader:
+                    data = data.to(device)
+                    # Forward
+                    output = VAE(data)
+                    # print(output)
+                    # output = [mu, var, output_0, output_1]
+                    loss = F.l1_loss(output[2], data) + F.l1_loss(output[3], data)
+                    
+                    # torch.clamp(loss, max=0.5)
+                    # backward
+                    loss.backward()
+                    optimizer.step()
+                    optimizer.zero_grad()
+                    
+                # Show progress
+                if epoch%10 == 9:
+                    print(f"epoch {epoch} Loss: {loss.item()}")
+                #print(f'Loss: {loss.item()}, isnan: {torch.isnan(model.parameters()).any()}')
+            
+            optimizer = torch.optim.AdamW(VAE.parameters(), lr=lr, eps=1e-7, weight_decay=wdecay[1])
+            # the VAE stage training
+            print("\n##############################\n#phase 2: the VAE stage#\n############################")
+            for epoch in range(encode_epochs[1]):
+                optimizer.zero_grad()
+                for data in dataloader:
+                    data = data.to(device)
+                    # Forward
+                    output = VAE(data)
+                    loss = encode.loss_function(output[2], data, mu=output[0], var=output[1], beta=beta)\
+                        + encode.loss_function(output[3], data, mu=output[0], var=output[1], beta=beta)
+                    
+                    # print(loss, loss.shape)
+                    
+                        
+                    # backward
+                    loss.backward()
+                    optimizer.step()
+                    optimizer.zero_grad()
+                    
+                # Show progress
+                if epoch%10 == 9:
+                    print(f"epoch {epoch} Loss: {loss.item()}")
+                # print(f'Loss: {loss.item()}, isnan: {torch.isnan(model.parameters()).any()}')
+            for ite in range(3):
+                VAE.to(device)
+                VAE.train()
+                optimizer.zero_grad()
+                for data in dataloader:
+                    data = data.to(device)
+                    output = VAE(data)
+                    loss = encode.loss_function(output[2], data, mu=output[0], var=output[1], beta=beta)\
+                        + encode.loss_function(output[3], data, mu=output[0], var=output[1], beta=beta)
+                    loss.backward()
+                    optimizer.step()
+                    optimizer.zero_grad()
+                # stop updating the model's parameters
+                VAE.eval()
+                
+                # return the latent variable
+                with torch.no_grad():
+                    VAE.to('cpu') # avoid putting too much data to GPU and cause memory issue
+                    tmp = VAE.encode_mu(denoised_data).cpu().numpy()
+                    # print(latent.requires_grad)
+                    # torch.save(latent, f'latent/{path_name}.pt')
+                    # print(latent.cpu().numpy())
+                    # np.save(f'latent/{path_name}.npy', latent.cpu().numpy())
+                # print(latent, latent.max(), latent.min())
+                latent_tmp.append(tmp)
+        # latent_tmp is a list of 9
+        return latent_tmp

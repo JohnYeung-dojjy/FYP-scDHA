@@ -58,8 +58,8 @@ class non_negative_kernel_autoencoder(nn.Module):
         return x
     
 def K_MostImportant_features(data, Wsd, k=5000, plot=False):
-    data = torch.tensor(data, dtype=torch.float).to(device)
-    
+    data = torch.tensor(data, dtype=torch.float)
+    print(Wsd)
     if k > data.shape[0]:
         k = data.shape[0]
     
