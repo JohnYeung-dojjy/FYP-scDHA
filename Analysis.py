@@ -33,6 +33,14 @@ from scipy.stats import mode
 import random
 import pandas as pd
 
+from clustering import clus
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.metrics import adjusted_rand_score
+
+import umap
+import os
+
 def scDHA_class(path_name, n_jobs = -1, seed = None, retrain = False):
     """This method does classification on the dataset
 
@@ -71,9 +79,47 @@ def scDHA_class(path_name, n_jobs = -1, seed = None, retrain = False):
         y_pred = knn.predict(x_test)
         results.append(y_pred)
 
-    result = mode(results)
+    result = mode(results).mode
     
     print('\n####################')
-    print(f'    accuracy: {(result.mode==y_test).mean():.2f}')
+    print(f'    accuracy: {(result==y_test).mean():.2f}')
     print('####################')
-    return mode(results)
+    return result
+
+
+def scDHA_clus(path_name, n_clusters):
+    data = np.load(f'latent/{path_name}.npy')
+
+    y_df = pd.read_csv(f'rds_csv_data/{path_name}_labels.csv')['x']
+    y = np.array(y_df)
+
+    best_ari = 0
+    for latent in data:
+        cluster = clus(latent, k=n_clusters)
+        
+        ari = adjusted_rand_score(y, cluster)
+        if ari > best_ari:
+            best_latent = latent
+            best_ari = ari
+            best_cluster = cluster
+    np.save(f'clustering/{path_name}_latent.npy', best_latent)
+    np.save(f'clustering/{path_name}_label.npy' , best_cluster)
+
+    print(f'ari: {best_ari}')
+    return best_latent, best_cluster
+
+def scDHA_vis(path_name, n_clusters, method='umap'):
+    if os.path.isfile(f'clustering/{path_name}_latent.npy'):
+        best_latent = np.load(f'clustering/{path_name}_latent.npy')
+        best_cluster = np.load(f'clustering/{path_name}_label.npy')
+    else:
+        best_latent, best_cluster = scDHA_clus(path_name, n_clusters)
+    
+    if method != 'umap':
+        print('method can only be umap because I only implemented this, using umap instead')
+            
+    reducer = umap.UMAP()
+    embedding = reducer.fit_transform(best_latent)
+    plt.scatter(embedding[:, 0], embedding[:, 1], c=best_cluster, cmap='Spectral', s=5)
+    plt.title(f'UMAP projection of the {path_name} latent variables', fontsize=12)
+    plt.show()

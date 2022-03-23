@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.parameter import Parameter
 import math
-from torch_util import check_grad_nan
 
 import torch.optim as optim                          # optimization
 from tqdm import tqdm                                # for progress bar
