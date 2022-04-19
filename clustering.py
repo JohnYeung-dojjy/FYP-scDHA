@@ -111,3 +111,69 @@ def ncluster_par(data, nmax=10):
     return np.floor(result.mean()+0.5).astype(np.int)+1 # original R code is return floor(mean(result) + 0.5)
                                                    # add 1 as python array index starts with 0
 
+
+
+"""WMetaC implementation, not continued"""
+# if do_clus:
+#     # Use an ensemble of data projection models to achieve higher accuracy and to avoid local minima, not needed if we use kmeans++
+#     # first repeat the data projection
+#     labels = []
+#     for hidden in latent:
+#         # labels.append(clus(hidden, k=6, nmax=100))
+#         labels.append(clus(hidden, nmax=50))
+#     labels = np.array(labels) 
+#     print(labels)   
+#     S = np.zeros((len(labels), len(labels)))  # chance that cell i and j are in the same cluster
+#     for i, row in enumerate(S):
+#         for j, _ in enumerate(S):
+#             if not (i==j):
+#                 S[i, j] = adjusted_rand_score(labels[i], labels[j])
+#     for i, row in enumerate(S):
+#         S[i,i] = row.mean()
+#     print(S)
+#     found = False
+#     if (S[S < 0.7]).sum() > 0:
+#         i = 2
+#     else:
+#         i = 1
+        
+#     # find best guessed label (latent variable)
+#     while not found:
+#         # print(f'i={i}')
+#         tmp = KMeans(n_clusters = i, n_init = 100, max_iter = 5000).fit(S)
+#         k = tmp.labels_
+#         max = 0
+#         for c in range(tmp.cluster_centers_.shape[0]): # for k clusters
+#             score = S[k == c, k == c].mean()
+#             if score > max and (k==c).sum() > 1:
+#                 max = score
+#                 idx = (k == c)
+#         if max > 0.8:
+#             found = True
+#         if i >= 3:
+#             found = True
+        
+#         i += 1
+#     # guess number of clusters
+#     tmp = []
+#     for label in labels[idx]:
+#         tmp.append(np.unique(label).shape[0])
+#         print(tmp)
+#     cluster_max = np.floor(np.mean(tmp)+0.5).astype(np.int)
+    
+    
+#     # (i) calculate cell-cell weighted similarity matrix 
+#     W = S * (1 - S)
+#     print(W.max(), W.min())
+#     # then combine the clustering results using the wMetaC
+#     # wMetaC = AgglomerativeClustering(n_clusters=k_classes, linkage='ward')
+#     # # wMetaC = AgglomerativeClustering(n_clusters=k_classes, affinity='precomputed')
+#     # wMetaC.fit(latent)
+#     # # wMetaC.fit(clustered.affinity_matrix_.toarray())
+#     # print(wMetaC)
+#     # print(clustered.labels_)
+#     # print(wMetaC.labels_)
+
+#         # print(latent.size())
+    
+    

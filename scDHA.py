@@ -44,7 +44,7 @@ def normalization(data):
     return normalized_data.T
 
 
-def scDHA(path_name, is_plot_denoise, vae_choice, retrain=False, seed=None):
+def scDHA(path_name, is_plot_denoise, retrain=False, seed=None):
     """load the data and compress it using the scDHA pipeline
 
     Args:
