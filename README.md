@@ -1,5 +1,5 @@
 # FYP-scDHA
-final year project of Yeung Ching Fung studying in CUHK BSc in Computer Science
+final year project of John Yeung
 
 This is a python implementation of the scDHA pipeline, with some functions missing for as the analysis is conducted on small dataset only.
 
