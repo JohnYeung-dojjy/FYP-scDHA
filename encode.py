@@ -16,7 +16,7 @@ else:
 def sampling(mu:torch.Tensor, var:torch.Tensor, epsilon_std:torch.Tensor, lat_dim):
     return mu + torch.sqrt(var)*epsilon_std*torch.randn((1, lat_dim), device=device)
 
-class paper_encoder(nn.Module):
+class stacked_bayesian_autoencoder(nn.Module):
     def __init__(self, original_dim, im_dim, lat_dim, epsilon_std=0.25, batch_norm=True, zero_bias=True):
         super().__init__()
         self.batch_norm = batch_norm
@@ -94,62 +94,62 @@ class paper_encoder(nn.Module):
         return mu
     
     
-def train_model(model, data, EPOCHS_0 = 10, EPOCHS_1 = 20, BATCH_SIZE = 100, beta = 50):
+# def train_model(model, data, EPOCHS_0 = 10, EPOCHS_1 = 20, BATCH_SIZE = 100, beta = 50):
     
-    print("training stacked bayesian autoencoder")
-    model.train()
+#     print("training stacked bayesian autoencoder")
+#     model.train()
     
-    optimizer = torch.optim.AdamW(model.parameters(), lr=5e-4, eps=1e-7, weight_decay=1e-6)
+#     optimizer = torch.optim.AdamW(model.parameters(), lr=5e-4, eps=1e-7, weight_decay=1e-6)
     
-    # the paper does the training data by data, but I choose to train in batches
+#     # the paper does the training data by data, but I choose to train in batches
     
-    # the warm-up process, which uses only reconstruction loss
-    print("\n###############################\n#phase 1: the warm-up process#\n######################################")
-    for epoch in range(EPOCHS_0):
-        optimizer.zero_grad()
-        for i in tqdm(range(0, len(data), BATCH_SIZE)):
+#     # the warm-up process, which uses only reconstruction loss
+#     print("\n###############################\n#phase 1: the warm-up process#\n######################################")
+#     for epoch in range(EPOCHS_0):
+#         optimizer.zero_grad()
+#         for i in tqdm(range(0, len(data), BATCH_SIZE)):
             
-            # Forward
-            output = model(data[i:i+BATCH_SIZE])
-            # print(output)
-            # output = [mu, var, output_0, output_1]
-            loss = F.l1_loss(output[2], data[i:i+BATCH_SIZE]) + F.l1_loss(output[3], data[i:i+BATCH_SIZE])
+#             # Forward
+#             output = model(data[i:i+BATCH_SIZE])
+#             # print(output)
+#             # output = [mu, var, output_0, output_1]
+#             loss = F.l1_loss(output[2], data[i:i+BATCH_SIZE]) + F.l1_loss(output[3], data[i:i+BATCH_SIZE])
             
-            # print(f'loss1: {F.l1_loss(output[2], data[i:i+BATCH_SIZE])}, loss2: {F.l1_loss(output[3], data[i:i+BATCH_SIZE])}')
-            torch.clamp(loss, max=0.5)
-            # backward
-            loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
+#             # print(f'loss1: {F.l1_loss(output[2], data[i:i+BATCH_SIZE])}, loss2: {F.l1_loss(output[3], data[i:i+BATCH_SIZE])}')
+#             torch.clamp(loss, max=0.5)
+#             # backward
+#             loss.backward()
+#             optimizer.step()
+#             optimizer.zero_grad()
             
-        # Show progress
-        if epoch%10 == 9:
-            print(f"epoch {epoch} Loss: {loss.item()}")
-        #print(f'Loss: {loss.item()}, isnan: {torch.isnan(model.parameters()).any()}')
+#         # Show progress
+#         if epoch%10 == 9:
+#             print(f"epoch {epoch} Loss: {loss.item()}")
+#         #print(f'Loss: {loss.item()}, isnan: {torch.isnan(model.parameters()).any()}')
     
-    optimizer = torch.optim.AdamW(model.parameters(), lr=5e-4, eps=1e-7, weight_decay=1e-3)
-    # the VAE stage training
-    print("\n##############################\n#phase 2: the VAE stage#\n############################")
-    for epoch in range(EPOCHS_1):
-        optimizer.zero_grad()
-        for i in tqdm(range(0, len(data), BATCH_SIZE)):
-            # Forward
-            output = model(data[i:i+BATCH_SIZE])
-            loss = encode.loss_function(output[2], data[i:i+BATCH_SIZE], mu=output[0], var=output[1], beta=beta)\
-                   + encode.loss_function(output[3], data[i:i+BATCH_SIZE], mu=output[0], var=output[1], beta=beta)
+#     optimizer = torch.optim.AdamW(model.parameters(), lr=5e-4, eps=1e-7, weight_decay=1e-3)
+#     # the VAE stage training
+#     print("\n##############################\n#phase 2: the VAE stage#\n############################")
+#     for epoch in range(EPOCHS_1):
+#         optimizer.zero_grad()
+#         for i in tqdm(range(0, len(data), BATCH_SIZE)):
+#             # Forward
+#             output = model(data[i:i+BATCH_SIZE])
+#             loss = encode.loss_function(output[2], data[i:i+BATCH_SIZE], mu=output[0], var=output[1], beta=beta)\
+#                    + encode.loss_function(output[3], data[i:i+BATCH_SIZE], mu=output[0], var=output[1], beta=beta)
             
-            # print(loss, loss.shape)
+#             # print(loss, loss.shape)
             
                 
-            # backward
-            loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
+#             # backward
+#             loss.backward()
+#             optimizer.step()
+#             optimizer.zero_grad()
             
-        # Show progress
-        if epoch%10 == 9:
-            print(f"epoch {epoch} Loss: {loss.item()}")
-        # print(f'Loss: {loss.item()}, isnan: {torch.isnan(model.parameters()).any()}')
+#         # Show progress
+#         if epoch%10 == 9:
+#             print(f"epoch {epoch} Loss: {loss.item()}")
+#         # print(f'Loss: {loss.item()}, isnan: {torch.isnan(model.parameters()).any()}')
                 
                 
     

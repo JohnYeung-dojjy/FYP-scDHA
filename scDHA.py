@@ -10,8 +10,6 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 import os
-from tqdm import tqdm                                # for progress bar
-from sklearn.model_selection import train_test_split
 
 
 # from numba import njit
@@ -21,8 +19,7 @@ if torch.cuda.is_available():
 else:
     device = torch.device("cpu")
     
-import denoise, encode, paper_encode
-
+import encode
 from denoise import non_negative_kernel_autoencoder, K_MostImportant_features
 from encode import stacked_bayesian_autoencoder
 
@@ -166,7 +163,7 @@ def scDHA(path_name, is_plot_denoise=False, retrain=False, seed=None):
         XNeg_kernel_autoencoder.eval()
         
         # choose 5000 most important features
-        denoised_data = denoise.K_MostImportant_features(normalized_data, Wsds, plot=is_plot_denoise)
+        denoised_data = K_MostImportant_features(normalized_data, Wsds, plot=is_plot_denoise)
         
         # latent generating, generate 9 versions of latent variables (9 VAE of different weights)
         latent_tmp = []
@@ -177,7 +174,7 @@ def scDHA(path_name, is_plot_denoise=False, retrain=False, seed=None):
                 
             dataloader = DataLoader(denoised_data, batch_size=batch_size, shuffle=True, drop_last=True)
             # define the stacked_bayesian_autoencoder object
-            VAE = paper_encoder(original_dim=denoised_data.size()[1], im_dim=64, lat_dim=15).to(device)
+            VAE = stacked_bayesian_autoencoder(original_dim=denoised_data.size()[1], im_dim=64, lat_dim=15).to(device)
             # print(VAE)
             # Train the model
             print("training stacked bayesian autoencoder")
