@@ -19,3 +19,6 @@ scanpy.ipynb
 test_plot.ipynb
 
 .Rproj.user
+
+test_scDHA
+*.ipynb
