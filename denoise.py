@@ -60,8 +60,8 @@ class non_negative_kernel_autoencoder(nn.Module):
 def K_MostImportant_features(data, Wsd, k=5000, plot=False):
     data = torch.tensor(data, dtype=torch.float)
     print(data.shape[0], data.shape[1])
-    if k > data.shape[0]:
-        k = data.shape[0]
+    if k > data.shape[1]:
+        k = data.shape[1]
     
     if plot:
         # print(weight_var)
@@ -75,7 +75,7 @@ def K_MostImportant_features(data, Wsd, k=5000, plot=False):
     
     # location the features with corresponding indices
     features = torch.index_select(data, dim=1, index=K_highest_weight_var.indices)
-    
+    print(features.shape)
     return features # (n, 5000)
 
 #### moved to compression.py ########
