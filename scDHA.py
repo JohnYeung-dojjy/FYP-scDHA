@@ -25,7 +25,6 @@ import denoise, encode, paper_encode
 
 from denoise import non_negative_kernel_autoencoder, K_MostImportant_features
 from encode import stacked_bayesian_autoencoder
-from paper_encode import paper_encoder
 
 
 def normalization(data):
@@ -44,7 +43,7 @@ def normalization(data):
     return normalized_data.T
 
 
-def scDHA(path_name, is_plot_denoise, retrain=False, seed=None):
+def scDHA(path_name, is_plot_denoise=False, retrain=False, seed=None):
     """load the data and compress it using the scDHA pipeline
 
     Args:

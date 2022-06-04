@@ -44,7 +44,8 @@ def normalization(data):
     return normalized_data.T
 
 
-def scDHA(path_name, is_plot_denoise, norm='log', denoise_epochs=10, encode_epochs=[10, 20], lr=5e-4, wdecay = [1e-6, 1e-3], seed=None):
+def scDHA(path_name, is_plot_denoise, norm='log', denoise_epochs=10, 
+          encode_epochs=[10, 20], lr=5e-4, wdecay = [1e-6, 1e-3], seed=None):
     """load the data and compress it using the scDHA pipeline
 
     Args:
