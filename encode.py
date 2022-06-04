@@ -93,6 +93,19 @@ class stacked_bayesian_autoencoder(nn.Module):
         
         return mu
     
+def kl_div_loss(mu, var):
+    loss = -0.5*torch.mean(1 + torch.log(var) - torch.square(mu) - var, dim=1)
+    return loss
+    
+
+    #@torch.jit.script
+def loss_function(input, target, mu, var, beta = 100):
+    # mse_loss = F.mse_loss(input, target)
+    mse_loss = torch.mean(torch.square(target - input), dim=1)
+    # kl_div = F.kl_div(input, target, reduction='batchmean')
+    kl_div = kl_div_loss(mu, var)
+    # print("mse_loss: ", mse_loss.item(), '\n', "kl_div: ", kl_div.item())
+    return (beta * mse_loss + kl_div).mean()
     
 # def train_model(model, data, EPOCHS_0 = 10, EPOCHS_1 = 20, BATCH_SIZE = 100, beta = 50):
     
